@@ -206,16 +206,6 @@ The dataset is not included in this repository due to size. Download from Kaggle
 
 ---
 
-## Academic Context
-
-**Course:** DSECLZG628T — Dissertation  
-**Programme:** M.Tech. Data Science & Engineering  
-**Institution:** BITS Pilani, WILP Division  
-**Academic Year:** 2025–2026  
-**Research Area:** AI/ML, Predictive Analytics, CRM Automation
-
----
-
 ## License
 
 This project is submitted as an academic dissertation. All rights reserved.
