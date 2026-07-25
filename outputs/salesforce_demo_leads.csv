@@ -1,0 +1,11 @@
+Last Name,Company,Lead Source,Lead_Score__c,Agent_Action__c
+Lead1,Demo Company 1,Organic Search,0.9945,Route to Sales Rep
+Lead2,Demo Company 2,Reference,0.996,Route to Sales Rep
+Lead3,Demo Company 3,Google,0.8287,Route to Sales Rep
+Lead4,Demo Company 4,Olark Chat,0.6858,Email Sequence
+Lead5,Demo Company 5,Google,0.7221,Email Sequence
+Lead6,Demo Company 6,Facebook,0.527,HITL Escalation
+Lead7,Demo Company 7,Olark Chat,0.4834,HITL Escalation
+Lead8,Demo Company 8,Olark Chat,0.1164,Nurture + Deflect
+Lead9,Demo Company 9,Google,0.2448,Nurture + Deflect
+Lead10,Demo Company 10,Olark Chat,0.1248,Nurture + Deflect
