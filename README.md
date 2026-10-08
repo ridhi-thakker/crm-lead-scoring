@@ -3,7 +3,7 @@
 
 **M.Tech. Dissertation — Data Science & Engineering**  
 **BITS Pilani, Work Integrated Learning Programmes (WILP)**  
-**Student:** Thakker Ridhi Vishal | **ID:** 2024DA04233  
+**Student:** Thakker Ridhi Vishal  
 **Supervisor:** Avinash Nawani  
 **Organisation:** Tata Consultancy Services, Ahmedabad
 
@@ -61,12 +61,14 @@ A Python-based agent simulation implements Agent Script-inspired conditional log
 ```
 crm-lead-scoring/
 ├── config.py                          # Portable path configuration
+├── requirements.txt                   # Python dependencies
+├── .env.example                       # Template for Salesforce credentials
 ├── data/
 │   └── Leads.csv                      # X Education dataset (not tracked in git)
 ├── models/
-│   ├── lead_scoring_model.pkl         # Trained Logistic Regression (not tracked)
-│   ├── scaler.pkl                     # Fitted StandardScaler (not tracked)
-│   └── model_columns.pkl             # Feature column schema (not tracked)
+│   ├── lead_scoring_model.pkl         # Trained Logistic Regression
+│   ├── scaler.pkl                     # Fitted StandardScaler
+│   └── model_columns.pkl             # Feature column schema
 ├── notebooks/
 │   ├── 01_EDA.ipynb                  # Phase 2 & 3: EDA, cleaning, feature engineering
 │   ├── 02_Models.ipynb               # Phase 4: Model training, SHAP, threshold analysis
@@ -79,10 +81,10 @@ crm-lead-scoring/
 │   ├── 05_precision_recall.png      # Precision-Recall and threshold analysis
 │   ├── 06_shap_importance.png       # SHAP feature importance
 │   ├── 07_confusion_matrices.png    # Confusion matrices for all models
-│   └── phase6_agent_simulation.csv  # Full agent simulation results
+│   ├── phase6_agent_simulation.csv  # Full agent simulation results
+│   └── salesforce_demo_leads.csv    # Sample scored leads for the Salesforce demo
 └── streamlit-app/
     ├── app.py                        # Interactive demo application
-    └── requirements.txt             # Python dependencies
 ```
 
 ---
@@ -101,13 +103,13 @@ git clone https://github.com/ridhi-thakker/crm-lead-scoring.git
 cd crm-lead-scoring
 
 # Install dependencies
-pip install -r streamlit-app/requirements.txt
+pip install -r requirements.txt
 
 # Download the dataset
 # Get Leads.csv from: https://www.kaggle.com/datasets/amritachatterjee09/lead-scoring-dataset
 # Place it in the data/ folder
 
-# Run the notebooks in order to generate model artifacts
+# Trained model files are already in models/. To retrain, run the notebooks in order:
 # 1. notebooks/01_EDA.ipynb
 # 2. notebooks/02_Models.ipynb
 # 3. notebooks/03_Agent_Simulation.ipynb
@@ -154,6 +156,8 @@ The interactive demo combines Stage 1 scoring and Stage 2 agent routing in a sin
 - All Predictions tab — scored and filterable view of all leads with CSV export
 - Single Lead tab — score any lead by entering CRM attributes
 - Salesforce tab — push scored leads directly to Salesforce via OAuth 2.0
+
+**Salesforce credentials (optional):** copy `.env.example` to `.env` and fill in your Connected App Consumer Key, Secret and My Domain URL, or type them into the app sidebar. Credentials are never stored in the code.
 
 **Running the app:**
 ```bash

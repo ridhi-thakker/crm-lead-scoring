@@ -8,6 +8,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from pathlib import Path
 
+# Optional: load Salesforce settings from a local .env file (never committed).
+# See .env.example for the variable names.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
+
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="CRM Lead Scoring",
@@ -441,12 +449,21 @@ with tab2:
         min_score = st.number_input("Min Score (%)", 0.0, 100.0, 0.0, 1.0)
     with f3:
         search_col = "Prospect ID" if "Prospect ID" in raw_df.columns else raw_df.columns[0]
-        search_val = st.text_input(f"Search by {search_col}", "")
+        c_input, c_btn = st.columns([3, 1])
+        with c_input:
+            search_input = st.text_input(f"Search by {search_col}", "", label_visibility="visible")
+        with c_btn:
+            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+            search_clicked = st.button("🔍 Search", use_container_width=True)
+
+    if search_clicked:
+        st.session_state["tab2_search_val"] = search_input
+    search_val = st.session_state.get("tab2_search_val", "")
 
     view = scored[scored["Tier"].isin(tier_filter)].copy()
     view = view[view["Score (%)"] >= min_score]
     if search_val:
-        view = view[view[search_col].astype(str).str.contains(search_val, case=False, na=False)]
+        view = view[view[search_col].astype(str).str.contains(search_val, case=False, na=False, regex=False)]
 
     view = view.sort_values("Conversion Probability", ascending=False)
 
@@ -630,9 +647,15 @@ with tab4:
     # Salesforce credentials in sidebar-style expander
     with st.expander("🔐 Salesforce Connection Settings", expanded=True):
         st.info("Using OAuth 2.0 Client Credentials Flow — more secure than username/password.")
-        sf_username = st.text_input("Consumer Key (Client ID)", 
-                                    value="3MVG9GCMQoQ6rpzSPWOSvWC2aa8LW8_v2n_RQZm0vd8ZMok68NEP9K9Lxfjq7YojqlJ5aSDznl9DT0MjjzUS0")
+        sf_domain   = st.text_input("Salesforce My Domain URL",
+                                    value=os.getenv("SF_MY_DOMAIN", ""),
+                                    placeholder="https://your-domain.my.salesforce.com",
+                                    help="Your org's My Domain URL (Setup → My Domain)")
+        sf_username = st.text_input("Consumer Key (Client ID)",
+                                    value=os.getenv("SF_CONSUMER_KEY", ""),
+                                    help="From your Salesforce Connected App")
         sf_password = st.text_input("Consumer Secret", type="password",
+                                    value=os.getenv("SF_CONSUMER_SECRET", ""),
                                     help="From your Salesforce Connected App")
 
     st.divider()
@@ -664,7 +687,7 @@ with tab4:
         push_btn = st.form_submit_button("🚀 Score & Push to Salesforce", use_container_width=True, type="primary")
 
     if push_btn:
-        if not sf_username or not sf_password:
+        if not sf_username or not sf_password or not sf_domain:
             st.error("Please fill in your Salesforce credentials above.")
         else:
             try:
@@ -713,7 +736,7 @@ with tab4:
                 # Connect to Salesforce via OAuth Client Credentials
                 with st.spinner("Connecting to Salesforce..."):
                     import requests as req
-                    token_url = f"https://curious-shark-mgsci4-dev-ed.trailblaze.my.salesforce.com/services/oauth2/token"
+                    token_url = f"{sf_domain.rstrip('/')}/services/oauth2/token"
                     token_resp = req.post(token_url, data={
                         "grant_type": "client_credentials",
                         "client_id": sf_username,
@@ -756,28 +779,48 @@ with tab4:
                     st.error(f"Salesforce returned an error: {record}")
 
             except SalesforceAuthenticationFailed:
-                st.error("Authentication failed. Check your username, password, and security token.")
+                st.error("Authentication failed. Check your Consumer Key, Consumer Secret and My Domain URL.")
             except ImportError:
                 st.error("simple-salesforce not installed. Run: pip3 install simple-salesforce")
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
     st.divider()
-    st.subheader("Push All Hot Leads to Salesforce")
-    st.caption(f"This will push all 🔥 Hot leads (score ≥ {hot_thresh}) from your dataset into Salesforce in one batch.")
+    st.subheader("Bulk Push Leads to Salesforce")
+    st.caption("Choose which tiers to include, then push every matching lead from your dataset into Salesforce in one batch.")
 
-    n_hot_leads = (scored["Tier"] == "🔥 Hot").sum()
-    st.metric("Hot Leads Ready to Push", f"{n_hot_leads:,}")
+    bulk_tiers = st.multiselect(
+        "Tiers to push",
+        ["🔥 Hot", "🌡️ Warm", "❄️ Cold"],
+        default=["🔥 Hot"],
+        help="Warm and Cold leads can be included too — each lead still gets the correct Agent Action based on its own score.",
+    )
 
-    if st.button(f"🚀 Push {n_hot_leads:,} Hot Leads to Salesforce", type="primary"):
-        if not sf_username or not sf_password or not sf_token:
+    bulk_leads = scored[scored["Tier"].isin(bulk_tiers)]
+    st.metric("Leads Ready to Push", f"{len(bulk_leads):,}")
+
+    def agent_action_for_score(score: float) -> str:
+        """4-band dissertation threshold logic — same as the single-lead push above."""
+        if score > 0.75:
+            return "Route to Sales Rep"
+        elif score >= 0.55:
+            return "Email Sequence"
+        elif score >= 0.45:
+            return "HITL Escalation"
+        else:
+            return "Nurture + Deflect"
+
+    if st.button(f"🚀 Push {len(bulk_leads):,} Leads to Salesforce", type="primary"):
+        if not sf_username or not sf_password or not sf_domain:
             st.error("Please fill in your Salesforce credentials in the connection settings above.")
+        elif len(bulk_leads) == 0:
+            st.warning("No leads match the selected tier(s).")
         else:
             try:
                 from simple_salesforce import Salesforce as SF, SalesforceAuthenticationFailed
 
                 import requests as req
-                token_url = "https://curious-shark-mgsci4-dev-ed.trailblaze.my.salesforce.com/services/oauth2/token"
+                token_url = f"{sf_domain.rstrip('/')}/services/oauth2/token"
                 token_resp = req.post(token_url, data={
                     "grant_type": "client_credentials",
                     "client_id": sf_username,
@@ -792,21 +835,20 @@ with tab4:
                     session_id=token_data["access_token"]
                 )
 
-                hot_leads = scored[scored["Tier"] == "🔥 Hot"].copy()
                 success_count = 0
                 fail_count    = 0
 
                 progress_bar = st.progress(0)
                 status_text  = st.empty()
 
-                for i, (idx, row) in enumerate(hot_leads.iterrows()):
+                for i, (idx, row) in enumerate(bulk_leads.iterrows()):
                     try:
                         last_name   = f"Lead_{str(raw_df.loc[idx, 'Prospect ID'])[:8]}" if "Prospect ID" in raw_df.columns else f"Lead_{idx}"
                         company     = f"Org_{str(raw_df.loc[idx, 'Prospect ID'])[:8]}" if "Prospect ID" in raw_df.columns else f"Company_{idx}"
                         lead_source = str(raw_df.loc[idx, "Lead Source"]) if "Lead Source" in raw_df.columns else "Other"
                         country_val = str(raw_df.loc[idx, "Country"])     if "Country"     in raw_df.columns else "India"
                         sf_score    = float(row["Conversion Probability"])
-                        agent_act   = "Route to Sales Rep"
+                        agent_act   = agent_action_for_score(sf_score)
 
                         conn.Lead.create({
                             "LastName"        : last_name,
@@ -820,8 +862,8 @@ with tab4:
                     except Exception:
                         fail_count += 1
 
-                    progress_bar.progress((i + 1) / len(hot_leads))
-                    status_text.text(f"Pushed {i+1} of {len(hot_leads)} leads...")
+                    progress_bar.progress((i + 1) / len(bulk_leads))
+                    status_text.text(f"Pushed {i+1} of {len(bulk_leads)} leads...")
 
                 status_text.empty()
                 st.success(f"✅ Batch complete — {success_count:,} leads pushed to Salesforce successfully. {fail_count} failed.")

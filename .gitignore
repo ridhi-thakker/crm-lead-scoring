@@ -1,13 +1,14 @@
-# Data and model files (too large for GitHub)
+# Dataset (public on Kaggle; see README for the link)
 data/Leads.csv
-models/*.pkl
 
 # Python
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.venv/
+venv/
 
-# Environment
+# Secrets / environment
 .env
 *.env
 
@@ -15,4 +16,4 @@ __pycache__/
 .DS_Store
 
 # VS Code
-.vscode/``
+.vscode/
